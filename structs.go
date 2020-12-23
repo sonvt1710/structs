@@ -2,6 +2,7 @@
 package structs
 
 import (
+	"errors"
 	"fmt"
 
 	"reflect"
@@ -11,7 +12,7 @@ var (
 	// DefaultTagName is the default tag name for struct fields which provides
 	// a more granular to tweak certain structs. Lookup the necessary functions
 	// for more info.
-	DefaultTagName = "structs" // struct's field default tag name
+	DefaultTagName = "json" // struct's field default tag name
 )
 
 // Struct encapsulates a struct type to provide several high level functions
@@ -275,7 +276,7 @@ func getFields(v reflect.Value, tagName string) []*Field {
 func (s *Struct) Field(name string) *Field {
 	f, ok := s.FieldOk(name)
 	if !ok {
-		panic("field not found")
+		panic(fmt.Sprintf("field '%s' not found", name))
 	}
 
 	return f
@@ -434,7 +435,7 @@ func strctVal(s interface{}) reflect.Value {
 	}
 
 	if v.Kind() != reflect.Struct {
-		panic("not struct")
+		panic(fmt.Sprintf("%+v not struct", s))
 	}
 
 	return v
@@ -446,10 +447,42 @@ func Map(s interface{}) map[string]interface{} {
 	return New(s).Map()
 }
 
+// ToMap converts the given struct to a map[string]interface{}. For more info
+// refer to Struct types Map() method. It return error if s's kind is not struct.
+func ToMap(s interface{}) (out map[string]interface{}, err error) {
+	// Note Cannot using this declare. Need err in function output
+	// var err error
+	defer func() {
+		if r := recover(); r != nil {
+			msg := r.(string)
+			err = errors.New(msg)
+		}
+	}()
+
+	out = New(s).Map()
+
+	return out, err
+}
+
 // FillMap is the same as Map. Instead of returning the output, it fills the
 // given map.
 func FillMap(s interface{}, out map[string]interface{}) {
 	New(s).FillMap(out)
+}
+
+// DoFillMap is the same as Map. Instead of returning the output, it fills the
+// given map. It will return error if panic when processing
+func DoFillMap(s interface{}, out map[string]interface{}) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			msg := r.(string)
+			err = errors.New(msg)
+		}
+	}()
+
+	New(s).FillMap(out)
+
+	return err
 }
 
 // Values converts the given struct to a []interface{}. For more info refer to
@@ -458,10 +491,44 @@ func Values(s interface{}) []interface{} {
 	return New(s).Values()
 }
 
+// GetValues converts the given struct to a []interface{}. For more info refer to
+// Struct types Values() method.  It panics if s's kind is not struct.
+func GetValues(s interface{}) (values []interface{}, err error) {
+	// Note Cannot using this declare. Need err in function output
+	// var err error
+	defer func() {
+		if r := recover(); r != nil {
+			msg := r.(string)
+			err = errors.New(msg)
+		}
+	}()
+
+	values = New(s).Values()
+
+	return values, err
+}
+
 // Fields returns a slice of *Field. For more info refer to Struct types
 // Fields() method.  It panics if s's kind is not struct.
 func Fields(s interface{}) []*Field {
 	return New(s).Fields()
+}
+
+// GetFields returns a slice of *Field. For more info refer to Struct types
+// Fields() method.  It return error != nil if s's kind is not struct.
+func GetFields(s interface{}) (fields []*Field, err error) {
+	// Note Cannot using this declare. Need err in function output
+	// var err error
+	defer func() {
+		if r := recover(); r != nil {
+			msg := r.(string)
+			err = errors.New(msg)
+		}
+	}()
+
+	fields = New(s).Fields()
+
+	return fields, err
 }
 
 // Names returns a slice of field names. For more info refer to Struct types
@@ -470,16 +537,65 @@ func Names(s interface{}) []string {
 	return New(s).Names()
 }
 
+// GetNames returns a slice of field names. For more info refer to Struct types
+// Names() method.  err != nil if s's kind is not struct.
+func GetNames(s interface{}) (names []string, err error) {
+	// Note Cannot using this declare. Need err in function output
+	// var err error
+	defer func() {
+		if r := recover(); r != nil {
+			msg := r.(string)
+			err = errors.New(msg)
+		}
+	}()
+
+	names = New(s).Names()
+
+	return names, err
+}
+
 // IsZero returns true if all fields is equal to a zero value. For more info
 // refer to Struct types IsZero() method.  It panics if s's kind is not struct.
 func IsZero(s interface{}) bool {
 	return New(s).IsZero()
 }
 
+// CheckZero returns true if all fields is equal to a zero value. For more info
+// refer to Struct types IsZero() method. error != nil if s's kind is not struct.
+func CheckZero(s interface{}) (isZero bool, err error) {
+	// Note Cannot using this declare. Need err in function output
+	// var err error
+	defer func() {
+		if r := recover(); r != nil {
+			msg := r.(string)
+			err = errors.New(msg)
+		}
+	}()
+
+	isZero = New(s).IsZero()
+	return isZero, err
+}
+
 // HasZero returns true if any field is equal to a zero value. For more info
 // refer to Struct types HasZero() method.  It panics if s's kind is not struct.
 func HasZero(s interface{}) bool {
 	return New(s).HasZero()
+}
+
+// IsHasZero returns true if any field is equal to a zero value. For more info
+// refer to Struct types HasZero() method.  err != nil if s's kind is not struct.
+func IsHasZero(s interface{}) (hasZero bool, err error) {
+	// Note Cannot using this declare. Need err in function output
+	// var err error
+	defer func() {
+		if r := recover(); r != nil {
+			msg := r.(string)
+			err = errors.New(msg)
+		}
+	}()
+
+	hasZero = New(s).HasZero()
+	return hasZero, err
 }
 
 // IsStruct returns true if the given variable is a struct or a pointer to
@@ -502,6 +618,22 @@ func IsStruct(s interface{}) bool {
 // empty string for unnamed types. It panics if s's kind is not struct.
 func Name(s interface{}) string {
 	return New(s).Name()
+}
+
+// GetName returns the structs's type name within its package. It returns an
+// empty string for unnamed types. err != nil if s's kind is not struct.
+func GetName(s interface{}) (name string, err error) {
+	// Note Cannot using this declare. Need err in function output
+	// var err error
+	defer func() {
+		if r := recover(); r != nil {
+			msg := r.(string)
+			err = errors.New(msg)
+		}
+	}()
+
+	name = New(s).Name()
+	return name, err
 }
 
 // nested retrieves recursively all types for the given value and returns the
